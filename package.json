@@ -1,0 +1,17 @@
+{
+  "name": "job-orchestrator",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter frontend dev",
+    "dev:core": "pnpm --filter core start:dev",
+    "build": "pnpm -r run build"
+  }
+}

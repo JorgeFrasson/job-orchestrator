@@ -1,0 +1,30 @@
+FROM node:18
+
+WORKDIR /app
+
+# Copia somente os arquivos de definição para instalar dependências antes
+COPY package.json pnpm-lock.yaml ./
+
+RUN npm install -g pnpm
+
+RUN pnpm install
+
+# Copie o restante do código
+COPY . .
+
+# Expõe a porta que o NestJS vai usar
+# Variáveis de ambiente para Postgres
+ENV DB_HOST=localhost
+ENV DB_PORT=5434
+ENV DB_USER=zapdev
+ENV DB_PASS=zapdev@1
+ENV DB_NAME=job_orchestrer
+# Variáveis de ambiente para Redis
+ENV REDIS_HOST=redis
+ENV REDIS_PORT=6379
+ENV REDIS_PASS=
+ENV REDIS_DB=0
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "start:dev"]

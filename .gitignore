@@ -1,0 +1,66 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# pnpm files
+.pnpm-store/
+
+# Build outputs
+/dist/
+**/dist/
+/build/
+**/build/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Docker
+*.local
+Dockerfile.*.backup
+docker-compose.override.yml
+
+# VSCode/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database/data/caches
+postgres-data/
+redis-data/
+**/.db
+**/.sqlite
+**/.sqlite3
+**/data/
+**/tmp/
+
+# Coverage
+coverage/
+**/coverage/
+
+# Misc
+*.tgz
+*.swp
+*.bak
+*.orig
+*.rej
+
+# Ignore local .envs for each package/app
+apps/**/.env
+packages/**/.env

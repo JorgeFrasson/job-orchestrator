@@ -1,0 +1,52 @@
+version: "3.8"
+services:
+  job-orchestrator-core:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      KAFKA_BROKER: kafka:9092
+      DB_HOST: 172.27.113.74
+      DB_PORT: 5434
+      DB_USER: zapdev
+      DB_PASS: Zapdev@1
+      DB_NAME: joborchestrer
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASS: ""
+      REDIS_DB: 0
+    # depends_on:
+    #   - postgres
+    #   - redis
+    networks:
+      - pos_zap_pos_kafka_net
+    volumes:
+      - ./:/app    # monta seu código dentro do container na pasta /app (ajuste se necessário)
+      - /app/node_modules  # para evitar sobrescrever node_modules local, opcional
+    command: pnpm --filter core start:dev   # executa no modo watch
+    stdin_open: true    # permite entrada se necessário
+    tty: true           # mantém container interativo
+
+  # postgres:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: job_orchestrer
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - pos_zap_pos_kafka_net
+
+  # redis:
+  #   image: redis:7
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - pos_zap_pos_kafka_net
+
+networks:
+  pos_zap_pos_kafka_net:
+    external: true

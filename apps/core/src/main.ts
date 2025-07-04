@@ -24,15 +24,17 @@ async function bootstrap() {
 
   // Inicia o microserviço Kafka (consumo de mensagens)
   await app.startAllMicroservices();
-
+  
   // Serve arquivos estáticos (frontend)
-  app.useStaticAssets(join(__dirname, '..', '..', '..', '..', 'public'));
+  if(process.env.NODE_ENV === 'production') {
+    app.useStaticAssets(join(__dirname, '..', '..', '..', '..', 'public'));
+    // SPA route fallback (qualquer rota que não começa com /api)
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.get(/^(?!\/api).*/, (req, res) => {
+      res.sendFile(join(__dirname, '..', '..', '..', '..', 'public', 'index.html'));
+    });
+  }
 
-  // SPA route fallback (qualquer rota que não começa com /api)
-  const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.get(/^(?!\/api).*/, (req, res) => {
-    res.sendFile(join(__dirname, '..', '..', '..', '..', 'public', 'index.html'));
-  });
 
   // Inicia o app HTTP
   await app.listen(3000);

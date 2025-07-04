@@ -3,14 +3,14 @@ import { Job } from './job.model';
 
 @Table({ tableName: 'job_configs', timestamps: false })
 export class JobConfig extends Model<JobConfig> {
-  @Column(DataType.STRING)
-  cron: string;
+  @Column({ type: DataType.STRING, allowNull: true })
+  cron?: string | null;
 
-  @Column(DataType.JSONB)
-  dependsOn: string[];
+  @Column({ type: DataType.JSONB, allowNull: true })
+  dependsOn?: string[] | null;
 
-  @Column(DataType.INTEGER)
-  retries: number;
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  retries?: number | null;
 
   @ForeignKey(() => Job)
   @Column

@@ -5,8 +5,11 @@ import { JobsService } from './jobs/jobs.service';
 import { JobConsumerService } from './jobs/jobs-consumer.service';
 import { JobProducerService } from './jobs/jobs-producer.service';
 import { JobLifecycleConsumerService } from './jobs/job-lifecycle-consumer.service';
+import { OnModuleInit } from '@nestjs/common';
 import { Job } from './models/job.model';
 import { JobConfig } from './models/job-config.model';
+import { JobTriggerManagerService } from './jobs/job-trigger-manager.service';
+import { JobsRepository } from './jobs/jobs.respository';
 
 @Module({
   imports: [
@@ -29,7 +32,9 @@ import { JobConfig } from './models/job-config.model';
     JobsService,
     JobConsumerService,
     JobProducerService,
-    JobLifecycleConsumerService
+    JobLifecycleConsumerService,
+    JobTriggerManagerService,
+    JobsRepository
   ],
 })
 export class AppModule {}

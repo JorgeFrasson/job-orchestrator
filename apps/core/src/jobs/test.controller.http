@@ -1,1 +1,18 @@
+
+### Start manual de JOB
 POST http://localhost:3000/jobs/sample-job-topic/start
+Content-Type: application/json
+
+### Busca config
+GET http://localhost:3000/jobs/sample-job-topic/config
+
+### Atualiza config
+PUT http://localhost:3000/jobs/sample-job-topic/config
+Content-Type: application/json
+
+{
+  "cron": "*/5 * * * * *",
+  "dependsOn": [],
+  "retries": 3
+}
+  

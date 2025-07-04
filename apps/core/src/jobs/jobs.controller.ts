@@ -1,8 +1,9 @@
-import { Controller, Post, Param, Body } from '@nestjs/common';
+import { Controller, Post, Param, Body, Patch, Get, Put } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { JobsService } from './jobs.service';
 import { RegisterJobDto } from './dto/register-job.dto';
 import { JobProducerService } from './jobs-producer.service';
+import { UpdateJobConfigDto } from './dto/update-job-config.dto';
 
 @Controller()
 export class JobsController {
@@ -31,5 +32,20 @@ export class JobsController {
       payload,
     });
     return { status: 'started', topic, sent: true };
+  }
+
+  @Put('/jobs/:topic/config')
+  async updateJobConfig(
+    @Param('topic') topic: string,
+    @Body() dto: UpdateJobConfigDto
+  ) {
+    return this.jobsService.updateJobConfig(topic, dto);
+  }
+
+  @Get('/jobs/:topic/config')
+  async getJobConfig(
+    @Param('topic') topic: string
+  ) {
+    return this.jobsService.getJobConfig(topic);
   }
 }

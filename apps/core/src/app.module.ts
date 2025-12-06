@@ -5,6 +5,7 @@ import { JobsService } from './jobs/jobs.service';
 import { JobConsumerService } from './jobs/jobs-consumer.service';
 import { JobProducerService } from './jobs/jobs-producer.service';
 import { JobLifecycleConsumerService } from './jobs/job-lifecycle-consumer.service';
+import { JobSchedulerService } from './jobs/job-scheduler.service';
 import { Job } from './models/job.model';
 import { JobConfig } from './models/job-config.model';
 
@@ -29,7 +30,8 @@ import { JobConfig } from './models/job-config.model';
     JobsService,
     JobConsumerService,
     JobProducerService,
-    JobLifecycleConsumerService
+    JobLifecycleConsumerService,
+    JobSchedulerService,
   ],
 })
 export class AppModule {}

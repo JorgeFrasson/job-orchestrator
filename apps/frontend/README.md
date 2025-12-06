@@ -1,53 +1,119 @@
-# React + TypeScript + Vite
+# Frontend - Job Orchestrator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface web moderna para gerenciamento do Job Orchestrator.
 
-Currently, two official plugins are available:
+## 🚀 Funcionalidades
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- ✅ **Listagem de Jobs**: Visualize todos os jobs registrados no orquestrador
+- 🔍 **Detalhes do Job**: Veja informações completas sobre cada job
+- ⚙️ **Configuração**: Edite cron, retries e dependências
+- 🚀 **Trigger Manual**: Execute jobs manualmente com payload customizado
+- 🔄 **Auto-refresh**: Atualização automática da lista de jobs
+- 📱 **Responsivo**: Interface adaptada para desktop e mobile
 
-## Expanding the ESLint configuration
+## 🛠️ Tecnologias
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** - Framework UI
+- **TypeScript** - Tipagem estática
+- **Vite** - Build tool e dev server
+- **React Router** - Roteamento
+- **TanStack Query** - Gerenciamento de estado e cache
+- **CSS Modules** - Estilização
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 📦 Instalação
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+```bash
+# No diretório raiz do monorepo
+pnpm install
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Ou apenas no frontend
+cd apps/frontend
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🏃 Executando
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Desenvolvimento
 
-export default tseslint.config([
-  globalIgnores(['dist']),
+```bash
+# No diretório do frontend
+pnpm dev
+
+# Ou do diretório raiz
+pnpm --filter frontend dev
+```
+
+O frontend estará disponível em `http://localhost:5173`
+
+### Build para Produção
+
+```bash
+pnpm build
+```
+
+Os arquivos otimizados serão gerados em `dist/`
+
+## ⚙️ Configuração
+
+Crie um arquivo `.env` no diretório `apps/frontend`:
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+## 📁 Estrutura
+
+```
+src/
+├── components/       # Componentes reutilizáveis
+│   ├── Header.tsx
+│   └── Layout.tsx
+├── pages/           # Páginas da aplicação
+│   ├── JobList.tsx
+│   ├── JobDetail.tsx
+│   └── About.tsx
+├── services/        # Serviços de API
+│   └── api.ts
+├── types/           # Tipos TypeScript
+│   └── job.types.ts
+├── App.tsx          # Componente principal
+└── main.tsx         # Entry point
+```
+
+## 🎨 Páginas
+
+### Home (`/`)
+Lista todos os jobs registrados com informações básicas e status de configuração.
+
+### Detalhes do Job (`/jobs/:topic`)
+- Informações completas do job
+- Edição de configurações (cron, retries, dependências)
+- Trigger manual com payload JSON customizado
+
+### Sobre (`/about`)
+Documentação sobre o projeto e arquitetura.
+
+## 🔌 Integração com Backend
+
+O frontend se comunica com o backend através de endpoints REST:
+
+- `GET /jobs` - Lista todos os jobs
+- `GET /jobs/:topic` - Busca um job específico
+- `POST /jobs/:topic/start` - Inicia um job manualmente
+- `PATCH /jobs/:topic/config` - Atualiza configuração do job
+
+## 🎯 Próximos Passos
+
+- [ ] Implementar dashboard com métricas
+- [ ] Adicionar histórico de execuções
+- [ ] Visualização de logs em tempo real
+- [ ] Notificações de falhas
+- [ ] Testes unitários e e2e
+- [ ] Dark mode
+
+## 📝 Licença
+
+Este projeto faz parte do Job Orchestrator monorepo.
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

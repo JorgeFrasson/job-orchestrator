@@ -1,11 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
+
+  // Habilita CORS para o frontend
+  app.enableCors({
+    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    credentials: true,
+  });
 
   // Conecta o microserviço Kafka
   app.connectMicroservice<MicroserviceOptions>({
@@ -25,17 +29,10 @@ async function bootstrap() {
   // Inicia o microserviço Kafka (consumo de mensagens)
   await app.startAllMicroservices();
 
-  // Serve arquivos estáticos (frontend)
-  app.useStaticAssets(join(__dirname, '..', '..', '..', '..', 'public'));
-
-  // SPA route fallback (qualquer rota que não começa com /api)
-  const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.get(/^(?!\/api).*/, (req, res) => {
-    res.sendFile(join(__dirname, '..', '..', '..', '..', 'public', 'index.html'));
-  });
-
-  // Inicia o app HTTP
+  // Inicia o app HTTP (apenas API)
   await app.listen(3000);
-  console.log('Nest HTTP + Kafka Microservice started');
+  console.log('🚀 Job Orchestrator Core started');
+  console.log('📡 API available at: http://localhost:3000');
+  console.log('📨 Kafka consumer running');
 }
 bootstrap();

@@ -1,11 +1,31 @@
 import { injectable } from "inversify";
-import { JobOrchestrer } from "@job-orchestration/sdk";
 
 @injectable()
 export class SampleJob {
-  public async execute(): Promise<void> {
-    console.log("Primeiro log do Hello World!");
+  private executionCount = 0;
 
-    return;
+  public async execute(payload?: any): Promise<void> {
+    this.executionCount++;
+    const timestamp = new Date().toISOString();
+    
+    console.log('='.repeat(60));
+    console.log(`🚀 [${timestamp}] Sample Job Executado!`);
+    console.log(`📊 Execução #${this.executionCount}`);
+    
+    if (payload) {
+      console.log('📦 Payload recebido:', JSON.stringify(payload, null, 2));
+    }
+    
+    // Simula processamento
+    console.log('⚙️  Processando...');
+    await this.simulateWork();
+    
+    console.log('✅ Job finalizado com sucesso!');
+    console.log('='.repeat(60));
+  }
+
+  private async simulateWork(): Promise<void> {
+    // Simula trabalho assíncrono (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 }

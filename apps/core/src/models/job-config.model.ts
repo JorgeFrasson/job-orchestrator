@@ -4,15 +4,23 @@ import { Job } from './job.model';
 @Table({ tableName: 'job_configs', timestamps: false })
 export class JobConfig extends Model<JobConfig> {
   @Column(DataType.STRING)
-  cron: string;
+  declare cron: string;
 
   @Column(DataType.JSONB)
-  dependsOn: string[];
+  declare dependsOn: string[];
 
   @Column(DataType.INTEGER)
-  retries: number;
+  declare retries: number;
+
+  @Column(DataType.INTEGER)
+  declare timeout: number;
+
+  @Column(DataType.JSONB)
+  declare integrations: unknown[];
 
   @ForeignKey(() => Job)
-  @Column
-  jobId: number;
+  @Column({
+    unique: true,
+  })
+  declare jobId: number;
 }

@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { Kafka, Consumer } from 'kafkajs';
+import { getKafkaCoreConfig } from '../kafka/kafka.config';
 
 @Injectable()
 export class JobConsumerService implements OnModuleDestroy {
@@ -8,9 +9,10 @@ export class JobConsumerService implements OnModuleDestroy {
   private consumers = new Map<string, Consumer>();
 
   constructor() {
+    const kafkaConfig = getKafkaCoreConfig();
     this.kafka = new Kafka({
-      clientId: 'job-orchestrer-core-consumer',
-      brokers: ['kafka:29092'], // puxar via env em produção
+      clientId: `${kafkaConfig.clientId}-job-consumer`,
+      brokers: kafkaConfig.brokers,
     });
   }
 

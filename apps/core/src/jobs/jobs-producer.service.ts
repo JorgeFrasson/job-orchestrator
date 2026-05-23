@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
+import { getKafkaCoreConfig } from '../kafka/kafka.config';
 
 @Injectable()
 export class JobProducerService implements OnModuleInit, OnModuleDestroy {
@@ -7,9 +8,10 @@ export class JobProducerService implements OnModuleInit, OnModuleDestroy {
   private producers: Map<string, Producer> = new Map();
 
   async onModuleInit() {
+    const kafkaConfig = getKafkaCoreConfig();
     this.kafka = new Kafka({
-      clientId: 'core',
-      brokers: ['kafka:29092'], // substitua conforme necessário
+      clientId: `${kafkaConfig.clientId}-producer`,
+      brokers: kafkaConfig.brokers,
     });
   }
 

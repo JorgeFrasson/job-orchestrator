@@ -2,9 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import * as cron from 'node-cron';
 import { Job } from '../models/job.model';
-import { JobProducerService } from './jobs-producer.service';
-import { JobLifecycleConsumerService } from './job-lifecycle-consumer.service';
-import { JobConsumerService } from './jobs-consumer.service';
+import { JobRuntimeService } from './job-runtime.service';
 
 interface ScheduledJob {
   topic: string;
@@ -19,9 +17,7 @@ export class JobSchedulerService implements OnModuleInit {
 
   constructor(
     @InjectModel(Job) private jobModel: typeof Job,
-    private readonly jobProducer: JobProducerService,
-    private readonly jobLifecycleConsumer: JobLifecycleConsumerService,
-    private readonly jobConsumer: JobConsumerService,
+    private readonly runtime: JobRuntimeService,
   ) {}
 
   async onModuleInit() {
@@ -51,20 +47,8 @@ export class JobSchedulerService implements OnModuleInit {
         const topic = job.get('topic') as string;
         const config = job.get('config') as any;
 
-        // Registra o consumer principal para o topic (recebe comandos)
-        await this.jobConsumer.registerConsumerForJob(topic, async (payload) => {
-          this.logger.log(`CMD recebido em ${topic}: ${JSON.stringify(payload)}`);
-        });
-        this.logger.log(`🎧 Consumer principal registrado para: ${topic}`);
-
-        // Registra o producer para o topic (necessário para enviar mensagens)
-        await this.jobProducer.registerProducerForTopic(topic);
+        await this.runtime.ensureTopicInfrastructure(topic);
         registeredCount++;
-        this.logger.log(`✅ Producer registrado para: ${topic}`);
-
-        // Registra consumers de lifecycle (topic-start e topic-end)
-        await this.jobLifecycleConsumer.registerLifecycleConsumersForJob(topic);
-        this.logger.log(`🎧 Lifecycle consumers registrados para: ${topic}`);
 
         // Se tem cron configurado, agenda a execução
         const cronExpression = config?.cron || config?.dataValues?.cron;
@@ -104,11 +88,7 @@ export class JobSchedulerService implements OnModuleInit {
       const task = cron.schedule(cronExpression, async () => {
         this.logger.log(`⏰ Executando job agendado: ${topic}`);
         try {
-          // Garante que o producer está registrado antes de enviar
-          await this.jobProducer.registerProducerForTopic(topic);
-          
-          await this.jobProducer.sendToJobTopic(topic, {
-            command: 'start',
+          await this.runtime.startJob(topic, {}, {
             timestamp: Date.now(),
             scheduled: true,
           });
@@ -154,8 +134,7 @@ export class JobSchedulerService implements OnModuleInit {
    */
   async updateSchedule(topic: string, cronExpression?: string): Promise<boolean> {
     try {
-      // Garante que o producer está registrado
-      await this.jobProducer.registerProducerForTopic(topic);
+      await this.runtime.ensureTopicInfrastructure(topic);
 
       if (!cronExpression) {
         // Se não há cron, remove agendamento

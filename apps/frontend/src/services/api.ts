@@ -1,9 +1,17 @@
-import type { Job, JobStartPayload, JobStartResponse } from '../types/job.types';
+import type {
+  Integration,
+  Job,
+  JobExecution,
+  JobStartPayload,
+  JobStartResponse,
+} from '../types/job.types';
 
 interface JobConfig {
   cron?: string;
   dependsOn?: string[];
   retries?: number;
+  timeout?: number;
+  integrations?: Integration[];
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -31,6 +39,10 @@ class ApiService {
 
   async getJob(topic: string): Promise<Job> {
     return this.fetch<Job>(`/jobs/${topic}`);
+  }
+
+  async getJobExecutions(topic: string): Promise<JobExecution[]> {
+    return this.fetch<JobExecution[]>(`/jobs/${topic}/executions`);
   }
 
   async startJob(topic: string, payload: JobStartPayload = {}): Promise<JobStartResponse> {

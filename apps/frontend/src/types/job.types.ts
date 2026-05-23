@@ -9,12 +9,27 @@ export interface Job {
   config?: JobConfig;
 }
 
+export interface JobExecution {
+  id: number;
+  executionId: string;
+  status: 'running' | 'succeeded' | 'failed';
+  triggerPayload?: unknown;
+  lifecyclePayload?: unknown;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  jobId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface JobConfig {
   id: number;
   cron?: string;
   dependsOn?: string[];
   retries?: number;
   timeout?: number;
+  integrations?: Integration[];
   jobId: number;
 }
 

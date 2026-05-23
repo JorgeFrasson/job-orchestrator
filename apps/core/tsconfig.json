@@ -10,7 +10,7 @@
     "target": "ES2024",
     "strictNullChecks": true,
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "./build",
     "rootDir": "./",
     "baseUrl": "./",
     "skipLibCheck": true,

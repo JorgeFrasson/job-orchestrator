@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import JobList from './pages/JobList';
+import { JobDetail } from './pages/JobDetail';
 import JobEdit from './pages/JobEdit';
 import About from './pages/About';
 import './App.css';
@@ -22,6 +23,7 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<JobList />} />
+            <Route path="/jobs/:topic" element={<JobDetail />} />
             <Route path="/jobs/:topic/edit" element={<JobEdit />} />
             <Route path="/about" element={<About />} />
           </Route>

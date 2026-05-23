@@ -5,9 +5,18 @@
     "target": "ES2021",
     "module": "commonjs",
     "moduleResolution": "node",
+    "rootDir": "./src",
+    "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

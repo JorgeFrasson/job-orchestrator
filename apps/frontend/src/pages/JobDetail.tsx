@@ -23,6 +23,13 @@ export function JobDetail() {
     enabled: !!topic,
   });
 
+  const { data: executions = [] } = useQuery({
+    queryKey: ['job-executions', topic],
+    queryFn: () => apiService.getJobExecutions(topic!),
+    enabled: !!topic,
+    refetchInterval: 5000,
+  });
+
   const startJobMutation = useMutation({
     mutationFn: (data: { topic: string; payload: any }) =>
       apiService.startJob(data.topic, { payload: data.payload }),
@@ -252,6 +259,27 @@ export function JobDetail() {
               {startJobMutation.isPending ? 'Iniciando...' : '▶️ Iniciar Job'}
             </button>
           </div>
+        </div>
+
+        <div className="detail-card full-width">
+          <h3>📈 Execuções Recentes</h3>
+          {executions.length === 0 ? (
+            <p>Nenhuma execução registrada ainda.</p>
+          ) : (
+            <div className="info-group">
+              {executions.map((execution) => (
+                <div className="info-item" key={execution.executionId}>
+                  <span className="info-label">
+                    {new Date(execution.createdAt).toLocaleString('pt-BR')}
+                  </span>
+                  <span className="info-value">
+                    {execution.status}
+                    {execution.errorMessage ? ` - ${execution.errorMessage}` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

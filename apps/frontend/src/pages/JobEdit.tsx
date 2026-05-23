@@ -30,6 +30,7 @@ const JobEdit: React.FC = () => {
       setCron((job as any).config?.cron || '');
       setRetries((job as any).config?.retries || 3);
       setTimeout((job as any).config?.timeout || 30000);
+      setIntegrations((job as any).config?.integrations || []);
     }
   }, [job]);
 
@@ -46,6 +47,7 @@ const JobEdit: React.FC = () => {
       cron: cron || undefined,
       retries,
       timeout,
+      integrations,
     });
   };
 

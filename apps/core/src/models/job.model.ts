@@ -1,5 +1,6 @@
-import { Table, Column, Model, DataType, HasOne } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, HasMany, HasOne } from 'sequelize-typescript';
 import { JobConfig } from './job-config.model';
+import { JobExecution } from './job-execution.model';
 
 @Table({ tableName: 'jobs', timestamps: true })
 export class Job extends Model<Job> {
@@ -12,14 +13,17 @@ export class Job extends Model<Job> {
     allowNull: false,
     unique: true,
   })
-  topic: string;
+  declare topic: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  service: string;
+  declare service: string;
 
   @HasOne(() => JobConfig)
-  config: JobConfig;
+  declare config: JobConfig;
+
+  @HasMany(() => JobExecution)
+  declare executions: JobExecution[];
 }

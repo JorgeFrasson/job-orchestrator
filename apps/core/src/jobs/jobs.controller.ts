@@ -2,14 +2,10 @@ import { Controller, Post, Get, Patch, Param, Body } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { JobsService } from './jobs.service';
 import { RegisterJobDto } from './dto/register-job.dto';
-import { JobProducerService } from './jobs-producer.service';
 
 @Controller()
 export class JobsController {
-  constructor(
-    private readonly jobsService: JobsService,
-    private readonly jobProducer: JobProducerService
-  ) {}
+  constructor(private readonly jobsService: JobsService) {}
 
   @MessagePattern('job-orchestrer-main')
   handleJobRegister(
@@ -29,17 +25,19 @@ export class JobsController {
     return this.jobsService.getJob(topic);
   }
 
+  @Get('/jobs/:topic/executions')
+  async listExecutions(@Param('topic') topic: string) {
+    return this.jobsService.listExecutions(topic);
+  }
+
   @Post('/jobs/:topic/start')
   async startJob(
     @Param('topic') topic: string,
     @Body() payload: any
   ) {
-    await this.jobProducer.registerProducerForTopic(topic);
-    await this.jobProducer.sendToJobTopic(topic, {
-      command: 'start',
-      timestamp: Date.now(),
-      payload,
-    });
+    const executionPayload = payload?.payload ?? payload ?? {};
+
+    await this.jobsService.triggerJobManually(topic, executionPayload);
     return { status: 'started', topic, sent: true };
   }
 

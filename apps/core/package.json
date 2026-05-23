@@ -2,9 +2,11 @@
   "name": "core",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/src/main",
+  "main": "build/src/main",
   "scripts": {
     "build": "nest build",
+    "kafka:bootstrap": "node build/src/kafka/bootstrap-kafka.js",
+    "test": "nest build && node --test tests/**/*.test.js",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node ."

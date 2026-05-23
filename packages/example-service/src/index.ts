@@ -4,6 +4,13 @@ import TYPES from './config/Types';
 import { JobOrchestrer, JobOrchestrerSetup } from '@job-orchestration/sdk';
 import { Container } from 'inversify';
 import { SampleJob } from './jobs/SampleJob';
+import { SecondJob } from './jobs/SecondJob';
+
+declare const process:
+  | {
+      env: Record<string, string | undefined>;
+    }
+  | undefined;
 
 // Inicializa o container inversify
 (async () => {
@@ -14,16 +21,23 @@ import { SampleJob } from './jobs/SampleJob';
 
   // Inicializa o SDK com configurações do Kafka
   await JobOrchestrerSetup.init({
-    kafkaBrokers: ["kafka:29092"],
+    kafkaBrokers: ((process?.env.KAFKA_BROKERS || process?.env.KAFKA_BROKER || 'kafka:29092')
+      .split(',')
+      .map((broker) => broker.trim())
+      .filter(Boolean)),
     service: 'example-service',
-    mainTopic: 'job-orchestrer-main', // tópico que o core está escutando
+    mainTopic: process?.env.KAFKA_MAIN_TOPIC || 'job-orchestrer-main',
+    topicManagementMode:
+      process?.env.KAFKA_TOPIC_MANAGEMENT_MODE === 'create_if_missing'
+        ? 'create_if_missing'
+        : 'validate',
   });
 
   console.log('✅ Conexão com Kafka estabelecida');
   console.log('📝 Registrando job: sample-job-topic');
 
   // Cria um JOB de exemplo que roda de 10 em 10 segundos
-  JobOrchestrer.Job({
+  await JobOrchestrer.Job({
     topic: 'sample-job-topic',
     function: async (payload) => {
       const job: SampleJob = container.get(TYPES.SampleJob);
@@ -37,7 +51,38 @@ import { SampleJob } from './jobs/SampleJob';
     }
   });
 
-  console.log('✅ Job registrado com sucesso!');
+
+  await JobOrchestrer.Job({
+    topic: 'job-2-topic',
+    function: async (payload) => {
+      const job: SecondJob = container.get(TYPES.SecondJob);
+      await job.execute(payload);
+    },
+    onStart: async (payload) => {
+      console.log('🟢 Job 2 iniciando...', payload ? `com payload: ${JSON.stringify(payload)}` : '');
+    },
+    onFinish: async (payload) => {
+      console.log('🏁 Job 2 finalizado!');
+    }
+  });
+
+  await JobOrchestrer.Job({
+    topic: 'job-3-inline-topic',
+    function: async (payload) => {
+      console.log('Executando job 3 inline...', payload);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simula trabalho
+    },
+    onStart: async (payload) => {
+      console.log('🟢 Job 3 iniciando...', payload ? `com payload: ${JSON.stringify(payload)}` : '');
+    },
+    onFinish: async (payload) => {
+      console.log('🏁 Job 3 finalizado!');
+    }
+  });
+
+  console.log('✅ Jobs registrados com sucesso!');
+  console.log('   - sample-job-topic');
+  console.log('   - job-2-topic');
   console.log('⏰ Configure o cron no frontend ou via API:');
   console.log('   PATCH http://localhost:3000/jobs/sample-job-topic/config');
   console.log('   Body: { "cron": "*/10 * * * * *" }');

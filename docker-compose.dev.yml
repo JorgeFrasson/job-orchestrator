@@ -7,7 +7,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      KAFKA_BROKER: kafka:9092
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_MAIN_TOPIC: job-orchestrer-main
+      KAFKA_TOPIC_MANAGEMENT_MODE: create_if_missing
+      KAFKA_TOPIC_PARTITIONS: 1
+      KAFKA_TOPIC_REPLICATION_FACTOR: 1
       DB_HOST: host.docker.internal
       DB_PORT: 5434
       DB_USER: zapdev

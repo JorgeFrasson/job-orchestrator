@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { bindings } from './config/Container';
 import TYPES from './config/Types';
-import { JobOrchestrer, JobOrchestrerSetup } from '@job-orchestration/sdk';
+import { JobOrchestrer, JobOrchestrerSetup } from '@jorge_henriquef/job-orchestrator-node';
 import { Container } from 'inversify';
 import { SampleJob } from './jobs/SampleJob';
 import { SecondJob } from './jobs/SecondJob';

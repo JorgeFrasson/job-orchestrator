@@ -1,6 +1,6 @@
 {
-  "name": "@job-orchestration/sdk",
-  "version": "1.1.0",
+  "name": "@jorge_henriquef/job-orchestrator-node",
+  "version": "1.1.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {

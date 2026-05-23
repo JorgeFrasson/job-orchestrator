@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.gitignore
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+*.log
+*.tgz
+.pnpm-store
+.idea
+.vscode

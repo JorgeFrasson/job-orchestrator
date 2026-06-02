@@ -6,10 +6,8 @@ export class OrchestratorConfig {
   static init(opts: JobOrchestrationOptions) {
     OrchestratorConfig.options = {
       ...opts,
-      mainTopic: opts.mainTopic || 'job-orchestrer-main',
-      topicManagementMode: opts.topicManagementMode || 'validate',
-      topicPartitions: opts.topicPartitions || 1,
-      topicReplicationFactor: opts.topicReplicationFactor || 1,
+      coreUrl: normalizeCoreUrl(opts.coreUrl || 'ws://localhost:3000'),
+      reconnectIntervalMs: opts.reconnectIntervalMs || 3000,
     };
   }
 
@@ -25,4 +23,16 @@ export class OrchestratorConfig {
   static resetForTests() {
     OrchestratorConfig.options = undefined as never;
   }
+}
+
+function normalizeCoreUrl(raw: string) {
+  if (raw.startsWith('http://')) {
+    return raw.replace('http://', 'ws://');
+  }
+
+  if (raw.startsWith('https://')) {
+    return raw.replace('https://', 'wss://');
+  }
+
+  return raw;
 }

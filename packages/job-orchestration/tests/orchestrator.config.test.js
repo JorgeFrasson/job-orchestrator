@@ -2,32 +2,26 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { OrchestratorConfig } = require('../dist/config/orchestrator.config.js');
-const { OrchestratorKafkaRuntime } = require('../dist/kafka/orchestrator-kafka.runtime.js');
+const { OrchestratorWebSocketRuntime } = require('../dist/websocket/orchestrator-websocket.runtime.js');
 
-test.afterEach(() => {
+test.afterEach(async () => {
+  await OrchestratorWebSocketRuntime.resetForTests();
   OrchestratorConfig.resetForTests();
-  OrchestratorKafkaRuntime.resetForTests();
 });
 
 test('OrchestratorConfig throws when accessed before initialization', () => {
-  assert.throws(
-    () => OrchestratorConfig.getOptions(),
-    /has not been initialized yet/,
-  );
+  assert.throws(() => OrchestratorConfig.getOptions(), /has not been initialized yet/);
 });
 
-test('OrchestratorConfig fills the default main topic', () => {
+test('OrchestratorConfig normalizes defaults for the WebSocket transport', () => {
   OrchestratorConfig.init({
-    kafkaBrokers: ['localhost:9092'],
     service: 'billing-service',
+    coreUrl: 'http://localhost:3000',
   });
 
   assert.deepEqual(OrchestratorConfig.getOptions(), {
-    kafkaBrokers: ['localhost:9092'],
     service: 'billing-service',
-    mainTopic: 'job-orchestrer-main',
-    topicManagementMode: 'validate',
-    topicPartitions: 1,
-    topicReplicationFactor: 1,
+    coreUrl: 'ws://localhost:3000',
+    reconnectIntervalMs: 3000,
   });
 });

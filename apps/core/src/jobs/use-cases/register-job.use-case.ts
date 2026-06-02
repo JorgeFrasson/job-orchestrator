@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Job } from '../../models/job.model';
 import { RegisterJobDto } from '../dto/register-job.dto';
 import { JobRegistryService } from '../job-registry.service';
-import { JobRuntimeService } from '../job-runtime.service';
 import { JobSchedulerService } from '../job-scheduler.service';
 
 @Injectable()
@@ -13,7 +12,6 @@ export class RegisterJobUseCase {
   constructor(
     @InjectModel(Job) private readonly jobModel: typeof Job,
     private readonly registry: JobRegistryService,
-    private readonly runtime: JobRuntimeService,
     private readonly scheduler: JobSchedulerService,
   ) {}
 
@@ -32,24 +30,48 @@ export class RegisterJobUseCase {
       include: ['config'],
     });
 
-    const isNewJob = !job;
+    let isNewJob = !job;
 
     if (!job) {
-      job = await this.jobModel.create({ topic, service } as Job);
-    } else {
+      try {
+        job = await this.jobModel.create({ topic, service } as Job);
+      } catch (error) {
+        if (!this.isUniqueTopicViolation(error)) {
+          throw error;
+        }
+
+        job = await this.jobModel.findOne({
+          where: { topic },
+          include: ['config'],
+        });
+        isNewJob = false;
+      }
+    }
+
+    if (!job) {
+      throw new Error(`Failed to register job ${topic}`);
+    }
+
+    if (!isNewJob) {
       await job.update({ service });
     }
 
-    await this.runtime.ensureTopicInfrastructure(topic);
     this.registry.remember({ topic, service });
 
     if (!isNewJob && job.config?.cron) {
       await this.scheduler.updateSchedule(topic, job.config.cron);
     }
-
-    await this.runtime.sendRegistrationConfirmation(topic);
     this.logger.log(`Job ${topic} registered successfully`);
 
     return { status: 'ok', topic, isNew: isNewJob };
+  }
+
+  private isUniqueTopicViolation(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      error.name === 'SequelizeUniqueConstraintError'
+    );
   }
 }

@@ -1,19 +1,9 @@
 import { Controller, Post, Get, Patch, Param, Body } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
 import { JobsService } from './jobs.service';
-import { RegisterJobDto } from './dto/register-job.dto';
 
 @Controller()
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
-
-  @MessagePattern('job-orchestrer-main')
-  handleJobRegister(
-    @Payload() data: RegisterJobDto
-  ) {
-    console.log(data);
-    return this.jobsService.handleJobRegistration(data);
-  }
 
   @Get('/jobs')
   async listJobs() {

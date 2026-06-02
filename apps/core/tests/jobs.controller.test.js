@@ -45,9 +45,8 @@ test('JobsController normalizes manual start payload and returns API response', 
   assertCalledOnceWith(jobsService.triggerJobManually, 'invoice.generate', { id: 1 });
 });
 
-test('JobsController forwards registration messages and config updates', async () => {
+test('JobsController forwards config updates', async () => {
   const jobsService = {
-    handleJobRegistration: createAsyncSpy(async (dto) => ({ status: 'ok', topic: dto.topic })),
     getAllJobs: createAsyncSpy(),
     getJob: createAsyncSpy(),
     listExecutions: createAsyncSpy(),
@@ -56,17 +55,8 @@ test('JobsController forwards registration messages and config updates', async (
   };
   const controller = new JobsController(jobsService);
 
-  const registration = await controller.handleJobRegister({
-    topic: 'invoice.generate',
-    service: 'billing',
-  });
   const updated = await controller.updateJobConfig('invoice.generate', { cron: '0 * * * *' });
 
-  assert.deepEqual(registration, { status: 'ok', topic: 'invoice.generate' });
   assert.deepEqual(updated, { topic: 'invoice.generate' });
-  assertCalledOnceWith(jobsService.handleJobRegistration, {
-    topic: 'invoice.generate',
-    service: 'billing',
-  });
   assertCalledOnceWith(jobsService.updateJobConfig, 'invoice.generate', { cron: '0 * * * *' });
 });

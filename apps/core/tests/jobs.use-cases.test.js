@@ -50,7 +50,6 @@ test('RegisterJobUseCase short-circuits already loaded jobs', async () => {
   const useCase = new RegisterJobUseCase(
     { findOne: createAsyncSpy(), create: createAsyncSpy() },
     { has: () => true, remember: createSyncSpy() },
-    { ensureTopicInfrastructure: createAsyncSpy(), sendRegistrationConfirmation: createAsyncSpy() },
     { updateSchedule: createAsyncSpy() },
   );
 
@@ -65,20 +64,14 @@ test('RegisterJobUseCase creates a new job and confirms registration', async () 
     create: createAsyncSpy(async () => createdJob),
   };
   const registry = { has: () => false, remember: createSyncSpy() };
-  const runtime = {
-    ensureTopicInfrastructure: createAsyncSpy(),
-    sendRegistrationConfirmation: createAsyncSpy(),
-  };
   const scheduler = { updateSchedule: createAsyncSpy() };
-  const useCase = new RegisterJobUseCase(model, registry, runtime, scheduler);
+  const useCase = new RegisterJobUseCase(model, registry, scheduler);
 
   const result = await useCase.execute({ topic: 'job-a', service: 'billing' });
 
   assert.deepEqual(result, { status: 'ok', topic: 'job-a', isNew: true });
   assertCalledOnceWith(model.create, { topic: 'job-a', service: 'billing' });
-  assertCalledOnceWith(runtime.ensureTopicInfrastructure, 'job-a');
   assertCalledOnceWith(registry.remember, { topic: 'job-a', service: 'billing' });
-  assertCalledOnceWith(runtime.sendRegistrationConfirmation, 'job-a');
 });
 
 test('RegisterJobUseCase updates an existing job and reapplies cron schedule', async () => {
@@ -91,18 +84,38 @@ test('RegisterJobUseCase updates an existing job and reapplies cron schedule', a
     create: createAsyncSpy(),
   };
   const registry = { has: () => false, remember: createSyncSpy() };
-  const runtime = {
-    ensureTopicInfrastructure: createAsyncSpy(),
-    sendRegistrationConfirmation: createAsyncSpy(),
-  };
   const scheduler = { updateSchedule: createAsyncSpy() };
-  const useCase = new RegisterJobUseCase(model, registry, runtime, scheduler);
+  const useCase = new RegisterJobUseCase(model, registry, scheduler);
 
   const result = await useCase.execute({ topic: 'job-a', service: 'billing-v2' });
 
   assert.deepEqual(result, { status: 'ok', topic: 'job-a', isNew: false });
   assertCalledOnceWith(job.update, { service: 'billing-v2' });
   assertCalledOnceWith(scheduler.updateSchedule, 'job-a', '0 * * * *');
+});
+
+test('RegisterJobUseCase tolerates concurrent creation races for the same topic', async () => {
+  const existingJob = {
+    config: undefined,
+    update: createAsyncSpy(),
+  };
+  const model = {
+    findOne: createAsyncSpy(async () => (model.findOne.calledTimes() === 1 ? null : existingJob)),
+    create: createAsyncSpy(async () => {
+      const error = new Error('duplicate topic');
+      error.name = 'SequelizeUniqueConstraintError';
+      throw error;
+    }),
+  };
+  const registry = { has: () => false, remember: createSyncSpy() };
+  const scheduler = { updateSchedule: createAsyncSpy() };
+  const useCase = new RegisterJobUseCase(model, registry, scheduler);
+
+  const result = await useCase.execute({ topic: 'job-a', service: 'billing' });
+
+  assert.deepEqual(result, { status: 'ok', topic: 'job-a', isNew: false });
+  assertCalledOnceWith(existingJob.update, { service: 'billing' });
+  assertCalledOnceWith(registry.remember, { topic: 'job-a', service: 'billing' });
 });
 
 test('TriggerJobManuallyUseCase rejects unknown jobs and starts known jobs', async () => {

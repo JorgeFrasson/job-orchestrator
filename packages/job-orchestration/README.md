@@ -1,6 +1,6 @@
 # @jorge_henriquef/job-orchestrator-node
 
-SDK Node.js para registrar e executar jobs no Job Orchestrator via Kafka.
+SDK Node.js para registrar e executar jobs no Job Orchestrator via WebSocket.
 
 ## Instalação
 
@@ -11,8 +11,8 @@ npm install @jorge_henriquef/job-orchestrator-node
 ## Pré-requisitos
 
 - Node.js 18+
-- Kafka acessível para o serviço
-- Core do Job Orchestrator ativo e consumindo o tópico principal
+- Core do Job Orchestrator ativo
+- Conectividade de rede entre o serviço e o core
 
 ## Uso rápido
 
@@ -20,10 +20,8 @@ npm install @jorge_henriquef/job-orchestrator-node
 import { JobOrchestrator, JobOrchestratorSetup } from '@jorge_henriquef/job-orchestrator-node';
 
 await JobOrchestratorSetup.init({
-  kafkaBrokers: ['localhost:9092'],
+  coreUrl: 'ws://localhost:3000',
   service: 'billing-service',
-  mainTopic: 'job-orchestrer-main',
-  topicManagementMode: 'create_if_missing',
 });
 
 await JobOrchestrator.register({
@@ -44,23 +42,15 @@ await JobOrchestrator.register({
 
 `JobOrchestratorSetup.init(options)` aceita:
 
-- `kafkaBrokers: string[]` lista de brokers Kafka.
-- `service: string` nome lógico do serviço produtor/consumidor.
-- `mainTopic?: string` tópico principal de registro. Padrão: `job-orchestrer-main`.
-- `topicManagementMode?: 'validate' | 'create_if_missing'`
-- `topicPartitions?: number` padrão: `1`.
-- `topicReplicationFactor?: number` padrão: `1`.
-
-## Estratégia de tópicos
-
-- `validate`: recomendado para produção. O SDK valida existência dos tópicos e falha se não existirem.
-- `create_if_missing`: recomendado para desenvolvimento local. O SDK tenta criar tópicos ausentes.
+- `coreUrl?: string` URL do core. Aceita `ws://`, `wss://`, `http://` e `https://`.
+- `service: string` nome lógico do serviço trabalhador.
+- `reconnectIntervalMs?: number` intervalo de reconexão. Padrão: `3000`.
 
 ## Fluxo de execução
 
-1. O job é registrado no tópico principal.
-2. O SDK garante tópicos do job (`<topic>`, `<topic>-start`, `<topic>-end`, `<topic>-fail`).
-3. O consumidor do job recebe o comando de execução.
+1. O SDK conecta ao core via `WebSocket`.
+2. O job é registrado na sessão ativa do serviço.
+3. O core envia comandos de execução para o worker conectado.
 4. O SDK publica eventos de lifecycle (`start`, `end`, `fail`) com `executionId`.
 
 ## Exemplo de payload de disparo
@@ -76,10 +66,10 @@ curl -X POST http://localhost:3000/jobs/billing-generate-invoice/start \
 ## Troubleshooting
 
 - `The producer is disconnected`
-  - verifique conectividade com Kafka;
+  - verifique conectividade com o core;
   - evite registrar jobs sem `await` no bootstrap do serviço.
-- `UNKNOWN_TOPIC_OR_PARTITION`
-  - confirme `mainTopic`;
-  - use `create_if_missing` em dev ou provisione tópicos no cluster.
+- desconexões frequentes
+  - valide `coreUrl`;
+  - verifique proxy, LB ou timeout de idle connection no ambiente.
 - job não aparece no core
-  - valide se SDK e core apontam para o mesmo broker Kafka.
+  - valide se SDK e core apontam para a mesma instância do core.

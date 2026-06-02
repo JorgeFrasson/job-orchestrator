@@ -3,52 +3,34 @@ const assert = require('node:assert/strict');
 
 const { JobOrchestrator, JobOrchestratorSetup } = require('../dist/job-orchestrator.js');
 const { JobOrchestrer } = require('../dist/JobOrchestrer.js');
-const { OrchestratorKafkaRuntime } = require('../dist/kafka/orchestrator-kafka.runtime.js');
-const { OrchestratorTopicProvisioner } = require('../dist/kafka/topic-provisioner.js');
 const { OrchestratorConfig } = require('../dist/config/orchestrator.config.js');
+const { OrchestratorWebSocketRuntime } = require('../dist/websocket/orchestrator-websocket.runtime.js');
 
 test.beforeEach(() => {
   JobOrchestratorSetup.init({
-    kafkaBrokers: ['localhost:9092'],
     service: 'payments-service',
+    coreUrl: 'ws://localhost:3000',
   });
 });
 
-test.afterEach(() => {
-  OrchestratorKafkaRuntime.resetForTests();
-  OrchestratorTopicProvisioner.resetForTests();
+test.afterEach(async () => {
+  await OrchestratorWebSocketRuntime.resetForTests();
   OrchestratorConfig.resetForTests();
 });
 
-test('JobOrchestrator.register publishes registration and executes the lifecycle pipeline in order', async () => {
+test('JobOrchestrator.register registers the job and executes the lifecycle pipeline in order', async () => {
   const events = [];
-  let subscribedTopic;
-  let subscribedHandler;
+  let registeredMessage;
+  let registeredHandler;
+  const originalPublishRegistration = OrchestratorWebSocketRuntime.publishRegistration;
+  const originalPublishLifecycleEvent = OrchestratorWebSocketRuntime.publishLifecycleEvent;
 
-  const originalPublishRegistration = OrchestratorKafkaRuntime.publishRegistration;
-  const originalSubscribeToJobTopic = OrchestratorKafkaRuntime.subscribeToJobTopic;
-  const originalPublishLifecycleEvent = OrchestratorKafkaRuntime.publishLifecycleEvent;
-  const originalEnsureMainTopic = OrchestratorTopicProvisioner.ensureMainTopic;
-  const originalEnsureJobTopics = OrchestratorTopicProvisioner.ensureJobTopics;
-
-  OrchestratorTopicProvisioner.ensureMainTopic = async () => {
-    events.push({ type: 'ensureMainTopic' });
+  OrchestratorWebSocketRuntime.publishRegistration = async (message, handler) => {
+    registeredMessage = message;
+    registeredHandler = handler;
   };
 
-  OrchestratorTopicProvisioner.ensureJobTopics = async (topic) => {
-    events.push({ type: 'ensureJobTopics', topic });
-  };
-
-  OrchestratorKafkaRuntime.publishRegistration = async (message) => {
-    events.push({ type: 'registration', message });
-  };
-
-  OrchestratorKafkaRuntime.subscribeToJobTopic = async (topic, handler) => {
-    subscribedTopic = topic;
-    subscribedHandler = handler;
-  };
-
-  OrchestratorKafkaRuntime.publishLifecycleEvent = async (topic, event, payload) => {
+  OrchestratorWebSocketRuntime.publishLifecycleEvent = async (topic, event, payload) => {
     events.push({ type: 'lifecycle', topic, event, payload });
   };
 
@@ -66,30 +48,42 @@ test('JobOrchestrator.register publishes registration and executes the lifecycle
       },
     });
 
-    assert.equal(subscribedTopic, 'invoice.generate');
-    assert.equal(events[0].type, 'ensureMainTopic');
-    assert.equal(events[1].type, 'registration');
-    assert.deepEqual(events[1].message, {
+    assert.deepEqual(registeredMessage, {
       topic: 'invoice.generate',
       service: 'payments-service',
     });
-    assert.deepEqual(events[2], { type: 'ensureJobTopics', topic: 'invoice.generate' });
 
-    await subscribedHandler({ amount: 250 });
+    await registeredHandler({ executionId: 'exec-1', payload: { amount: 250 } });
 
-    assert.deepEqual(events.slice(3), [
-      { type: 'onStart', payload: { amount: 250 } },
-      { type: 'lifecycle', topic: 'invoice.generate', event: 'start', payload: { amount: 250 } },
-      { type: 'handler', payload: { amount: 250 } },
-      { type: 'onFinish', payload: { amount: 250 } },
-      { type: 'lifecycle', topic: 'invoice.generate', event: 'end', payload: { amount: 250 } },
+    assert.deepEqual(events, [
+      {
+        type: 'onStart',
+        payload: { executionId: 'exec-1', payload: { amount: 250 } },
+      },
+      {
+        type: 'lifecycle',
+        topic: 'invoice.generate',
+        event: 'start',
+        payload: { executionId: 'exec-1', payload: { amount: 250 } },
+      },
+      {
+        type: 'handler',
+        payload: { executionId: 'exec-1', payload: { amount: 250 } },
+      },
+      {
+        type: 'onFinish',
+        payload: { executionId: 'exec-1', payload: { amount: 250 } },
+      },
+      {
+        type: 'lifecycle',
+        topic: 'invoice.generate',
+        event: 'end',
+        payload: { executionId: 'exec-1', payload: { amount: 250 } },
+      },
     ]);
   } finally {
-    OrchestratorKafkaRuntime.publishRegistration = originalPublishRegistration;
-    OrchestratorKafkaRuntime.subscribeToJobTopic = originalSubscribeToJobTopic;
-    OrchestratorKafkaRuntime.publishLifecycleEvent = originalPublishLifecycleEvent;
-    OrchestratorTopicProvisioner.ensureMainTopic = originalEnsureMainTopic;
-    OrchestratorTopicProvisioner.ensureJobTopics = originalEnsureJobTopics;
+    OrchestratorWebSocketRuntime.publishRegistration = originalPublishRegistration;
+    OrchestratorWebSocketRuntime.publishLifecycleEvent = originalPublishLifecycleEvent;
   }
 });
 
@@ -125,21 +119,15 @@ test('JobOrchestrer.Job keeps backward compatibility with the legacy function fi
 
 test('JobOrchestrator.register publishes a fail event when the handler throws', async () => {
   const events = [];
-  let subscribedHandler;
+  let registeredHandler;
+  const originalPublishRegistration = OrchestratorWebSocketRuntime.publishRegistration;
+  const originalPublishLifecycleEvent = OrchestratorWebSocketRuntime.publishLifecycleEvent;
 
-  const originalPublishRegistration = OrchestratorKafkaRuntime.publishRegistration;
-  const originalSubscribeToJobTopic = OrchestratorKafkaRuntime.subscribeToJobTopic;
-  const originalPublishLifecycleEvent = OrchestratorKafkaRuntime.publishLifecycleEvent;
-  const originalEnsureMainTopic = OrchestratorTopicProvisioner.ensureMainTopic;
-  const originalEnsureJobTopics = OrchestratorTopicProvisioner.ensureJobTopics;
-
-  OrchestratorTopicProvisioner.ensureMainTopic = async () => {};
-  OrchestratorTopicProvisioner.ensureJobTopics = async () => {};
-  OrchestratorKafkaRuntime.publishRegistration = async () => {};
-  OrchestratorKafkaRuntime.subscribeToJobTopic = async (_topic, handler) => {
-    subscribedHandler = handler;
+  OrchestratorWebSocketRuntime.publishRegistration = async (_message, handler) => {
+    registeredHandler = handler;
   };
-  OrchestratorKafkaRuntime.publishLifecycleEvent = async (topic, event, payload) => {
+
+  OrchestratorWebSocketRuntime.publishLifecycleEvent = async (topic, event, payload) => {
     events.push({ topic, event, payload });
   };
 
@@ -152,7 +140,7 @@ test('JobOrchestrator.register publishes a fail event when the handler throws', 
     });
 
     await assert.rejects(
-      () => subscribedHandler({ executionId: 'exec-1', payload: { id: 1 } }),
+      () => registeredHandler({ executionId: 'exec-1', payload: { id: 1 } }),
       /handler exploded/,
     );
 
@@ -173,10 +161,7 @@ test('JobOrchestrator.register publishes a fail event when the handler throws', 
       },
     ]);
   } finally {
-    OrchestratorKafkaRuntime.publishRegistration = originalPublishRegistration;
-    OrchestratorKafkaRuntime.subscribeToJobTopic = originalSubscribeToJobTopic;
-    OrchestratorKafkaRuntime.publishLifecycleEvent = originalPublishLifecycleEvent;
-    OrchestratorTopicProvisioner.ensureMainTopic = originalEnsureMainTopic;
-    OrchestratorTopicProvisioner.ensureJobTopics = originalEnsureJobTopics;
+    OrchestratorWebSocketRuntime.publishRegistration = originalPublishRegistration;
+    OrchestratorWebSocketRuntime.publishLifecycleEvent = originalPublishLifecycleEvent;
   }
 });

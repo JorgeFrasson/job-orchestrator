@@ -38,7 +38,7 @@ export class JobExecutionHistoryService {
         });
       }
 
-      return this.jobExecutionModel.create({
+      return this.createOrLoadExecution({
         executionId,
         status: 'running',
         startedAt: this.resolveEventDate(payload),
@@ -51,7 +51,7 @@ export class JobExecutionHistoryService {
     }
 
     if (!existingExecution) {
-      return this.jobExecutionModel.create({
+      const createdOrLoadedExecution = await this.createOrLoadExecution({
         executionId,
         status: event === 'fail' ? 'failed' : 'succeeded',
         startedAt: this.resolveEventDate(payload),
@@ -61,6 +61,17 @@ export class JobExecutionHistoryService {
         errorMessage: payload?.errorMessage || null,
         jobId: job.id,
       } as JobExecution);
+
+      if (createdOrLoadedExecution.status === 'running') {
+        return createdOrLoadedExecution.update({
+          status: event === 'fail' ? 'failed' : 'succeeded',
+          finishedAt: this.resolveEventDate(payload),
+          lifecyclePayload,
+          errorMessage: payload?.errorMessage || null,
+        });
+      }
+
+      return createdOrLoadedExecution;
     }
 
     return existingExecution.update({
@@ -91,5 +102,34 @@ export class JobExecutionHistoryService {
 
   private resolveEventDate(payload: any) {
     return payload?.timestamp ? new Date(payload.timestamp) : new Date();
+  }
+
+  private async createOrLoadExecution(payload: JobExecution) {
+    try {
+      return await this.jobExecutionModel.create(payload);
+    } catch (error) {
+      if (!this.isUniqueExecutionViolation(error)) {
+        throw error;
+      }
+
+      const existingExecution = await this.jobExecutionModel.findOne({
+        where: { executionId: payload.executionId },
+      });
+
+      if (!existingExecution) {
+        throw error;
+      }
+
+      return existingExecution;
+    }
+  }
+
+  private isUniqueExecutionViolation(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      error.name === 'SequelizeUniqueConstraintError'
+    );
   }
 }

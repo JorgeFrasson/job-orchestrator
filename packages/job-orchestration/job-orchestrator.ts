@@ -1,6 +1,5 @@
 import { OrchestratorConfig } from './config/orchestrator.config';
-import { OrchestratorKafkaRuntime } from './kafka/orchestrator-kafka.runtime';
-import { OrchestratorTopicProvisioner } from './kafka/topic-provisioner';
+import { OrchestratorWebSocketRuntime } from './websocket/orchestrator-websocket.runtime';
 import {
   JobExecutionHandler,
   JobLifecycleHandler,
@@ -23,16 +22,16 @@ class JobExecutionPipeline {
         await this.onStart(payload);
       }
 
-      await OrchestratorKafkaRuntime.publishLifecycleEvent(this.topic, 'start', payload);
+      await OrchestratorWebSocketRuntime.publishLifecycleEvent(this.topic, 'start', payload);
       await this.execute(payload);
 
       if (this.onFinish) {
         await this.onFinish(payload);
       }
 
-      await OrchestratorKafkaRuntime.publishLifecycleEvent(this.topic, 'end', payload);
+      await OrchestratorWebSocketRuntime.publishLifecycleEvent(this.topic, 'end', payload);
     } catch (error) {
-      await OrchestratorKafkaRuntime.publishLifecycleEvent(this.topic, 'fail', {
+      await OrchestratorWebSocketRuntime.publishLifecycleEvent(this.topic, 'fail', {
         ...(payload && typeof payload === 'object' ? payload : { payload }),
         errorMessage: error instanceof Error ? error.message : String(error),
       });
@@ -57,10 +56,7 @@ export class JobOrchestrator {
       job.onFinish,
     );
 
-    await OrchestratorTopicProvisioner.ensureMainTopic();
-    await OrchestratorKafkaRuntime.publishRegistration(registrationMessage);
-    await OrchestratorTopicProvisioner.ensureJobTopics(job.topic);
-    await OrchestratorKafkaRuntime.subscribeToJobTopic(job.topic, async (payload) => {
+    await OrchestratorWebSocketRuntime.publishRegistration(registrationMessage, async (payload) => {
       await pipeline.run(payload);
     });
   }

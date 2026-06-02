@@ -70,3 +70,42 @@ test('JobExecutionHistoryService records failed execution and lists executions',
   assert.equal(jobExecutionModel.create.lastCall()[0].errorMessage, 'boom');
   assert.deepEqual(result, [{ executionId: 'exec-2', status: 'failed' }]);
 });
+
+test('JobExecutionHistoryService tolerates duplicated completion events for the same execution', async () => {
+  const jobModel = {
+    findOne: createAsyncSpy(async () => ({ id: 9, topic: 'job-c' })),
+  };
+
+  let existingExecution = null;
+  const jobExecutionModel = {
+    findOne: createAsyncSpy(async () => existingExecution),
+    create: createAsyncSpy(async (payload) => {
+      if (!existingExecution) {
+        const error = new Error('duplicate execution');
+        error.name = 'SequelizeUniqueConstraintError';
+        existingExecution = {
+          executionId: payload.executionId,
+          status: 'running',
+          update: createAsyncSpy(async (changes) => Object.assign(existingExecution, changes)),
+        };
+        throw error;
+      }
+
+      return payload;
+    }),
+    findAll: createAsyncSpy(async () => []),
+  };
+
+  const service = new JobExecutionHistoryService(jobModel, jobExecutionModel);
+
+  const result = await service.recordLifecycleEvent('job-c', 'end', {
+    executionId: 'exec-3',
+    timestamp: 40,
+    payload: { source: 'worker' },
+  });
+
+  assert.equal(jobExecutionModel.create.calledTimes(), 1);
+  assert.equal(existingExecution.status, 'succeeded');
+  assert.equal(existingExecution.update.calledTimes(), 1);
+  assert.equal(result, existingExecution);
+});

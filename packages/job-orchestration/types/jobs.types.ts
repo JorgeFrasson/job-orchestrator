@@ -4,7 +4,6 @@ export type JobExecutionHandler = (payload: JobPayload) => Promise<void> | void;
 export type JobLifecycleHandler = (payload: JobPayload) => Promise<void> | void;
 export type JobCommandHandler = (payload: JobPayload) => Promise<void>;
 export type JobEventName = 'start' | 'end' | 'fail';
-export type KafkaTopicManagementMode = 'validate' | 'create_if_missing';
 
 export interface RegisteredJobDefinition {
   topic: string;
@@ -19,12 +18,9 @@ export interface JobRegistrationMessage {
 }
 
 export interface JobOrchestrationOptions {
-  kafkaBrokers: string[];
+  coreUrl?: string;
   service: string;
-  mainTopic?: string;
-  topicManagementMode?: KafkaTopicManagementMode;
-  topicPartitions?: number;
-  topicReplicationFactor?: number;
+  reconnectIntervalMs?: number;
 }
 
 export interface JobConfig {

@@ -19,21 +19,13 @@ declare const process:
 
   console.log('🔧 Iniciando Example Service...');
 
-  // Inicializa o SDK com configurações do Kafka
+  // Inicializa o SDK com configurações do core
   await JobOrchestrerSetup.init({
-    kafkaBrokers: ((process?.env.KAFKA_BROKERS || process?.env.KAFKA_BROKER || 'kafka:29092')
-      .split(',')
-      .map((broker) => broker.trim())
-      .filter(Boolean)),
+    coreUrl: process?.env.CORE_URL || 'ws://localhost:3000',
     service: 'example-service',
-    mainTopic: process?.env.KAFKA_MAIN_TOPIC || 'job-orchestrer-main',
-    topicManagementMode:
-      process?.env.KAFKA_TOPIC_MANAGEMENT_MODE === 'create_if_missing'
-        ? 'create_if_missing'
-        : 'validate',
   });
 
-  console.log('✅ Conexão com Kafka estabelecida');
+  console.log('✅ Conexão com core estabelecida');
   console.log('📝 Registrando job: sample-job-topic');
 
   // Cria um JOB de exemplo que roda de 10 em 10 segundos

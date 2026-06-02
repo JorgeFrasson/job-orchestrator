@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AppIcon } from './AppIcon';
 import './Header.css';
 
 export function Header() {
@@ -7,7 +8,7 @@ export function Header() {
       <div className="header-container">
         <div className="header-brand">
           <Link to="/" className="brand-link">
-            <span className="brand-icon">⚡</span>
+            <AppIcon icon="lucide:orbit" className="brand-icon" />
             <h1>Job Orchestrator</h1>
           </Link>
         </div>

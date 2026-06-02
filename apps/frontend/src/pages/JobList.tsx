@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import type { MouseEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
-import './JobList.css';
+import { AppIcon } from '../components/AppIcon';
 import { Loading } from '../components/Loading';
 import { ErrorMessage } from '../components/ErrorMessage';
+import './JobList.css';
 
-const JobList: React.FC = () => {
+const JobList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -16,106 +18,124 @@ const JobList: React.FC = () => {
     refetchInterval: 5000,
   });
 
-  const handleStartJob = async (topic: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const filteredJobs = useMemo(
+    () =>
+      jobs?.filter((job) => {
+        const serviceName = job.service || job.serviceName || '';
+        const query = searchTerm.toLowerCase();
+
+        return (
+          job.topic.toLowerCase().includes(query) || serviceName.toLowerCase().includes(query)
+        );
+      }) || [],
+    [jobs, searchTerm]
+  );
+
+  const totalJobs = jobs?.length || 0;
+  const scheduledJobs = jobs?.filter((job) => job.config?.cron).length || 0;
+
+  const handleStartJob = async (topic: string, event: MouseEvent) => {
+    event.stopPropagation();
+
     try {
       await apiService.startJob(topic);
-    } catch (error) {
-      console.error('Failed to start job:', error);
+    } catch (startError) {
+      console.error('Failed to start job:', startError);
     }
   };
 
-  const handleEditJob = (topic: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditJob = (topic: string, event: MouseEvent) => {
+    event.stopPropagation();
     navigate(`/jobs/${topic}/edit`);
   };
 
-  if (isLoading) return <Loading />;
-  if (error) return <ErrorMessage message="Erro ao carregar jobs" />;
-
-  const filteredJobs = jobs?.filter((job) =>
-    job.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (job.service || job.serviceName || '').toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  if (isLoading) return <Loading message="Carregando plano de jobs..." />;
+  if (error) return <ErrorMessage message="Não foi possível carregar a listagem de jobs." />;
 
   return (
     <div className="job-list-container">
-      <div className="page-header">
-        <div>
-          <h1>Jobs Registrados</h1>
+      <section className="jobs-toolbar">
+        <div className="jobs-toolbar-copy">
+          <div className="eyebrow">
+            <AppIcon icon="lucide:list-filter" className="eyebrow-icon" />
+            Registry
+          </div>
+          <h1>Jobs</h1>
           <p className="page-subtitle">
-            Gerencie e monitore todos os jobs do orquestrador
+            Registro central de workers, agendamentos e execuções.
           </p>
         </div>
-        <div className="header-actions">
+
+        <div className="jobs-toolbar-actions">
           <div className="search-box">
-            <span className="search-icon">🔍</span>
+            <AppIcon icon="lucide:search" className="search-icon" />
             <input
               type="text"
-              placeholder="Buscar por tópico ou serviço..."
+              placeholder="Filtrar por tópico ou serviço"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
               className="search-input"
             />
           </div>
-        </div>
-      </div>
-
-      <div className="jobs-stats">
-        <div className="stat-card">
-          <div className="stat-value">{jobs?.length || 0}</div>
-          <div className="stat-label">Total de Jobs</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">
-            {jobs?.filter(j => j.config?.cron).length || 0}
+          <div className="toolbar-summary">
+            <span>{totalJobs} total</span>
+            <span>{scheduledJobs} com cron</span>
+            <span>{filteredJobs.length} visíveis</span>
           </div>
-          <div className="stat-label">Com Cron</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value">
-            {jobs?.filter(j => j.isActive !== false).length || 0}
-          </div>
-          <div className="stat-label">Ativos</div>
-        </div>
-      </div>
+      </section>
 
-      <div className="table-container">
+      <section className="jobs-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Registry</h2>
+            <p>Selecione um job para ver detalhes, configurações e histórico.</p>
+          </div>
+          <div className="panel-meta">{filteredJobs.length} visíveis</div>
+        </div>
+
         <table className="jobs-table">
           <thead>
             <tr>
-              <th>Status</th>
+              <th>Job</th>
               <th>Tópico</th>
               <th>Serviço</th>
-              <th>Cron</th>
-              <th className="text-right">Ações</th>
+              <th>Trigger</th>
+              <th>State</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredJobs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="empty-state">
-                  <div className="empty-icon">📭</div>
+                <td colSpan={6} className="empty-state">
+                  <div className="empty-icon-wrap">
+                    <AppIcon icon="lucide:inbox" className="empty-icon" />
+                  </div>
                   <div>Nenhum job encontrado</div>
                 </td>
               </tr>
             ) : (
               filteredJobs.map((job) => (
-                <tr key={job.topic} className="job-row">
+                <tr
+                  key={job.topic}
+                  className="job-row"
+                  onClick={() => navigate(`/jobs/${job.topic}`)}
+                >
                   <td>
-                    <div className="status-badge">
-                      <span className={`status-indicator ${job.isActive !== false ? 'active' : 'inactive'}`}></span>
-                      {job.isActive !== false ? 'Ativo' : 'Inativo'}
+                    <div className="job-name-cell">
+                      <div>
+                        <div className="job-title">{job.topic.split('-')[0] || job.topic}</div>
+                        <div className="job-subtitle">Registered worker task</div>
+                      </div>
                     </div>
                   </td>
                   <td>
-                    <div className="topic-cell">
-                      <span className="topic-name">{job.topic}</span>
-                    </div>
+                    <code className="topic-name">{job.topic}</code>
                   </td>
                   <td>
                     <div className="service-cell">
-                      <span className="service-icon">🔧</span>
+                      <AppIcon icon="lucide:container" className="service-icon" />
                       <span>{job.service || job.serviceName}</span>
                     </div>
                   </td>
@@ -123,24 +143,42 @@ const JobList: React.FC = () => {
                     {job.config?.cron ? (
                       <code className="cron-badge">{job.config.cron}</code>
                     ) : (
-                      <span className="text-muted">Manual</span>
+                      <span className="mode-badge">Manual</span>
                     )}
                   </td>
                   <td>
+                    <span
+                      className={`status-badge ${job.isActive !== false ? 'active' : 'inactive'}`}
+                    >
+                      <span className="status-dot" />
+                      {job.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="text-right">
                     <div className="action-buttons">
                       <button
-                        className="action-btn play-btn"
-                        onClick={(e) => handleStartJob(job.topic, e)}
+                        className="action-btn"
+                        onClick={(event) => handleStartJob(job.topic, event)}
                         title="Executar job manualmente"
                       >
-                        ▶️
+                        <AppIcon icon="lucide:play" className="action-icon" />
                       </button>
                       <button
-                        className="action-btn edit-btn"
-                        onClick={(e) => handleEditJob(job.topic, e)}
+                        className="action-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/jobs/${job.topic}`);
+                        }}
+                        title="Abrir job"
+                      >
+                        <AppIcon icon="lucide:arrow-up-right" className="action-icon" />
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={(event) => handleEditJob(job.topic, event)}
                         title="Editar job"
                       >
-                        ✏️
+                        <AppIcon icon="lucide:settings-2" className="action-icon" />
                       </button>
                     </div>
                   </td>
@@ -149,7 +187,7 @@ const JobList: React.FC = () => {
             )}
           </tbody>
         </table>
-      </div>
+      </section>
     </div>
   );
 };

@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiService } from '../services/api';
-import type { Integration, JobConfig } from '../types/job.types';
-import { Loading } from '../components/Loading';
+import { AppIcon } from '../components/AppIcon';
 import { ErrorMessage } from '../components/ErrorMessage';
+import { Loading } from '../components/Loading';
+import type { Integration, JobConfig } from '../types/job.types';
 import './JobEdit.css';
 
-const JobEdit: React.FC = () => {
+const JobEdit = () => {
   const { topic } = useParams<{ topic: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -19,19 +20,19 @@ const JobEdit: React.FC = () => {
   const [showIntegrationModal, setShowIntegrationModal] = useState(false);
   const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
 
-  const { data: job = {}, isLoading } = useQuery({
+  const { data: job, isLoading } = useQuery({
     queryKey: ['job', topic],
     queryFn: () => apiService.getJob(topic!),
     enabled: !!topic,
   });
 
-  React.useEffect(() => {
-    if (job && (job as any).config) {
-      setCron((job as any).config?.cron || '');
-      setRetries((job as any).config?.retries || 3);
-      setTimeout((job as any).config?.timeout || 30000);
-      setIntegrations((job as any).config?.integrations || []);
-    }
+  useEffect(() => {
+    if (!job?.config) return;
+
+    setCron(job.config.cron || '');
+    setRetries(job.config.retries || 3);
+    setTimeout(job.config.timeout || 30000);
+    setIntegrations(job.config.integrations || []);
   }, [job]);
 
   const updateConfigMutation = useMutation({
@@ -62,29 +63,31 @@ const JobEdit: React.FC = () => {
   };
 
   const handleDeleteIntegration = (id: string) => {
-    setIntegrations(integrations.filter((i) => i.id !== id));
+    setIntegrations(integrations.filter((integration) => integration.id !== id));
   };
 
   const handleSaveIntegration = (integration: Integration) => {
     if (editingIntegration) {
-      setIntegrations(integrations.map((i) => (i.id === integration.id ? integration : i)));
+      setIntegrations(
+        integrations.map((current) => (current.id === integration.id ? integration : current))
+      );
     } else {
       setIntegrations([...integrations, { ...integration, id: Date.now().toString() }]);
     }
+
     setShowIntegrationModal(false);
   };
 
-  if (isLoading) return <Loading />;
-  if (!job || !(job as any).topic) return <ErrorMessage message="Job não encontrado" />;
-
-  const jobData = job as any;
+  if (isLoading) return <Loading message="Carregando editor do job..." />;
+  if (!job?.topic) return <ErrorMessage message="Job não encontrado" />;
 
   return (
     <div className="job-edit-container">
       <div className="page-header">
         <div>
           <button className="back-btn" onClick={() => navigate('/')}>
-            ← Voltar
+            <AppIcon icon="lucide:arrow-left" className="back-icon" />
+            <span>Voltar</span>
           </button>
           <h1>Editar Job</h1>
           <p className="page-subtitle">{topic}</p>
@@ -94,22 +97,19 @@ const JobEdit: React.FC = () => {
       <div className="edit-sections">
         <section className="edit-section">
           <div className="section-header">
-            <h2>⚙️ Configurações</h2>
+            <h2>
+              <AppIcon icon="lucide:sliders-horizontal" className="section-icon" />
+              Configurações
+            </h2>
             <p className="section-description">
-              Configure o comportamento e agendamento do job
+              Ajuste agendamento, retries e timeout do worker registrado.
             </p>
           </div>
 
           <div className="form-grid">
             <div className="form-group">
               <label htmlFor="topic">Tópico</label>
-              <input
-                type="text"
-                id="topic"
-                value={jobData.topic}
-                disabled
-                className="form-input disabled"
-              />
+              <input type="text" id="topic" value={job.topic} disabled className="form-input disabled" />
             </div>
 
             <div className="form-group">
@@ -117,7 +117,7 @@ const JobEdit: React.FC = () => {
               <input
                 type="text"
                 id="service"
-                value={jobData.service || jobData.serviceName || ''}
+                value={job.service || job.serviceName || ''}
                 disabled
                 className="form-input disabled"
               />
@@ -125,29 +125,27 @@ const JobEdit: React.FC = () => {
 
             <div className="form-group full-width">
               <label htmlFor="cron">
-                Expressão Cron
+                Expressão cron
                 <span className="label-hint">Deixe vazio para execução manual</span>
               </label>
               <input
                 type="text"
                 id="cron"
                 value={cron}
-                onChange={(e) => setCron(e.target.value)}
+                onChange={(event) => setCron(event.target.value)}
                 placeholder="*/10 * * * * *"
                 className="form-input"
               />
-              <small className="help-text">
-                Exemplo: */10 * * * * * (a cada 10 segundos)
-              </small>
+              <small className="help-text">Exemplo: */10 * * * * * (a cada 10 segundos)</small>
             </div>
 
             <div className="form-group">
-              <label htmlFor="retries">Tentativas (Retries)</label>
+              <label htmlFor="retries">Retries</label>
               <input
                 type="number"
                 id="retries"
                 value={retries}
-                onChange={(e) => setRetries(Number(e.target.value))}
+                onChange={(event) => setRetries(Number(event.target.value))}
                 min="0"
                 max="10"
                 className="form-input"
@@ -163,7 +161,7 @@ const JobEdit: React.FC = () => {
                 type="number"
                 id="timeout"
                 value={timeout}
-                onChange={(e) => setTimeout(Number(e.target.value))}
+                onChange={(event) => setTimeout(Number(event.target.value))}
                 min="1000"
                 step="1000"
                 className="form-input"
@@ -173,29 +171,35 @@ const JobEdit: React.FC = () => {
 
           <div className="section-actions">
             <button
-              className="btn btn-primary"
+              className="button button-primary"
               onClick={handleSaveConfig}
               disabled={updateConfigMutation.isPending}
             >
-              {updateConfigMutation.isPending ? 'Salvando...' : '💾 Salvar Configurações'}
+              <AppIcon icon="lucide:save" className="button-icon" />
+              {updateConfigMutation.isPending ? 'Salvando...' : 'Salvar configurações'}
             </button>
           </div>
         </section>
 
         <section className="edit-section">
           <div className="section-header">
-            <h2>🔌 Integrações</h2>
+            <h2>
+              <AppIcon icon="lucide:plug-zap" className="section-icon" />
+              Integrações
+            </h2>
             <p className="section-description">
-              Configure webhooks ou funções JavaScript para eventos de lifecycle
+              Configure webhooks ou funções JavaScript para eventos de lifecycle.
             </p>
           </div>
 
           <div className="integrations-list">
             {integrations.length === 0 ? (
               <div className="empty-integrations">
-                <div className="empty-icon">🔌</div>
+                <div className="empty-icon">
+                  <AppIcon icon="lucide:plug-zap" className="empty-icon-svg" />
+                </div>
                 <p>Nenhuma integração configurada</p>
-                <small>Adicione webhooks ou funções Lambda para onStart e onFinish</small>
+                <small>Adicione webhooks ou funções Lambda para onStart e onFinish.</small>
               </div>
             ) : (
               integrations.map((integration) => (
@@ -210,8 +214,9 @@ const JobEdit: React.FC = () => {
           </div>
 
           <div className="section-actions">
-            <button className="btn btn-secondary" onClick={handleAddIntegration}>
-              ➕ Adicionar Integração
+            <button className="button button-secondary" onClick={handleAddIntegration}>
+              <AppIcon icon="lucide:plus" className="button-icon" />
+              Adicionar integração
             </button>
           </div>
         </section>
@@ -234,42 +239,50 @@ interface IntegrationCardProps {
   onDelete: () => void;
 }
 
-const IntegrationCard: React.FC<IntegrationCardProps> = ({ integration, onEdit, onDelete }) => {
-  return (
-    <div className="integration-card">
-      <div className="integration-header">
-        <div className="integration-info">
-          <span className={`integration-type ${integration.type}`}>
-            {integration.type === 'lambda' ? '⚡ Lambda JS' : '🌐 Webhook'}
-          </span>
-          <span className={`integration-event ${integration.event}`}>
-            {integration.event === 'onStart' ? '▶️ onStart' : '✅ onFinish'}
-          </span>
-        </div>
-        <div className="integration-actions">
-          <button className="icon-btn" onClick={onEdit} title="Editar">
-            ✏️
-          </button>
-          <button className="icon-btn danger" onClick={onDelete} title="Excluir">
-            🗑️
-          </button>
-        </div>
+const IntegrationCard = ({ integration, onEdit, onDelete }: IntegrationCardProps) => (
+  <div className="integration-card">
+    <div className="integration-header">
+      <div className="integration-info">
+        <span className={`integration-type ${integration.type}`}>
+          <AppIcon
+            icon={integration.type === 'lambda' ? 'lucide:bolt' : 'lucide:globe'}
+            className="integration-badge-icon"
+          />
+          {integration.type === 'lambda' ? 'Lambda JS' : 'Webhook'}
+        </span>
+        <span className={`integration-event ${integration.event}`}>
+          <AppIcon
+            icon={integration.event === 'onStart' ? 'lucide:play' : 'lucide:check-check'}
+            className="integration-badge-icon"
+          />
+          {integration.event}
+        </span>
       </div>
-      <div className="integration-content">
-        {integration.type === 'lambda' ? (
-          <pre className="code-preview">
-            {(integration.config as any).code.slice(0, 100)}
-            {(integration.config as any).code.length > 100 ? '...' : ''}
-          </pre>
-        ) : (
-          <div className="webhook-preview">
-            <code>{(integration.config as any).url}</code>
-          </div>
-        )}
+
+      <div className="integration-actions">
+        <button className="icon-btn" onClick={onEdit} title="Editar">
+          <AppIcon icon="lucide:pencil-line" className="action-icon" />
+        </button>
+        <button className="icon-btn danger" onClick={onDelete} title="Excluir">
+          <AppIcon icon="lucide:trash-2" className="action-icon" />
+        </button>
       </div>
     </div>
-  );
-};
+
+    <div className="integration-content">
+      {integration.type === 'lambda' ? (
+        <pre className="code-preview">
+          {(integration.config as { code: string }).code.slice(0, 100)}
+          {(integration.config as { code: string }).code.length > 100 ? '...' : ''}
+        </pre>
+      ) : (
+        <div className="webhook-preview">
+          <code>{(integration.config as { url: string }).url}</code>
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 interface IntegrationModalProps {
   integration: Integration | null;
@@ -277,24 +290,28 @@ interface IntegrationModalProps {
   onClose: () => void;
 }
 
-const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave, onClose }) => {
+const IntegrationModal = ({ integration, onSave, onClose }: IntegrationModalProps) => {
   const [type, setType] = useState<'lambda' | 'webhook'>(integration?.type || 'lambda');
   const [event, setEvent] = useState<'onStart' | 'onFinish'>(integration?.event || 'onStart');
   const [lambdaCode, setLambdaCode] = useState(
-    integration?.type === 'lambda' ? (integration.config as any).code : ''
+    integration?.type === 'lambda' ? (integration.config as { code: string }).code : ''
   );
   const [webhookUrl, setWebhookUrl] = useState(
-    integration?.type === 'webhook' ? (integration.config as any).url : ''
+    integration?.type === 'webhook' ? (integration.config as { url: string }).url : ''
   );
   const [webhookMethod, setWebhookMethod] = useState<'POST' | 'GET' | 'PUT'>(
-    integration?.type === 'webhook' ? (integration.config as any).method : 'POST'
+    integration?.type === 'webhook'
+      ? (integration.config as { method: 'POST' | 'GET' | 'PUT' }).method
+      : 'POST'
   );
   const [webhookPayload, setWebhookPayload] = useState(
-    integration?.type === 'webhook' ? (integration.config as any).payload || '' : ''
+    integration?.type === 'webhook'
+      ? (integration.config as { payload?: string }).payload || ''
+      : ''
   );
 
   const handleSave = () => {
-    const newIntegration: Integration = {
+    const nextIntegration: Integration = {
       id: integration?.id || Date.now().toString(),
       type,
       event,
@@ -307,22 +324,23 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
               payload: webhookPayload,
             },
     };
-    onSave(newIntegration);
+
+    onSave(nextIntegration);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
-          <h3>{integration ? 'Editar Integração' : 'Nova Integração'}</h3>
+          <h3>{integration ? 'Editar integração' : 'Nova integração'}</h3>
           <button className="close-btn" onClick={onClose}>
-            ✕
+            <AppIcon icon="lucide:x" className="close-icon" />
           </button>
         </div>
 
         <div className="modal-body">
           <div className="form-group">
-            <label>Tipo de Integração</label>
+            <label>Tipo de integração</label>
             <div className="radio-group">
               <label className="radio-label">
                 <input
@@ -331,7 +349,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                   checked={type === 'lambda'}
                   onChange={() => setType('lambda')}
                 />
-                <span>⚡ Lambda JavaScript</span>
+                <span>Lambda JavaScript</span>
               </label>
               <label className="radio-label">
                 <input
@@ -340,7 +358,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                   checked={type === 'webhook'}
                   onChange={() => setType('webhook')}
                 />
-                <span>🌐 Webhook HTTP</span>
+                <span>Webhook HTTP</span>
               </label>
             </div>
           </div>
@@ -355,7 +373,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                   checked={event === 'onStart'}
                   onChange={() => setEvent('onStart')}
                 />
-                <span>▶️ onStart (antes da execução)</span>
+                <span>onStart (antes da execução)</span>
               </label>
               <label className="radio-label">
                 <input
@@ -364,7 +382,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                   checked={event === 'onFinish'}
                   onChange={() => setEvent('onFinish')}
                 />
-                <span>✅ onFinish (após a execução)</span>
+                <span>onFinish (após a execução)</span>
               </label>
             </div>
           </div>
@@ -373,14 +391,12 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
             <div className="form-group">
               <label htmlFor="lambda-code">
                 Código JavaScript
-                <span className="label-hint">
-                  Use as variáveis: job, payload, context
-                </span>
+                <span className="label-hint">Use as variáveis: job, payload, context</span>
               </label>
               <textarea
                 id="lambda-code"
                 value={lambdaCode}
-                onChange={(e) => setLambdaCode(e.target.value)}
+                onChange={(event) => setLambdaCode(event.target.value)}
                 placeholder={`// Exemplo:\nconsole.log('Job iniciado:', job.topic);\nconsole.log('Payload:', payload);`}
                 className="code-editor"
                 rows={10}
@@ -389,12 +405,12 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
           ) : (
             <>
               <div className="form-group">
-                <label htmlFor="webhook-url">URL do Webhook</label>
+                <label htmlFor="webhook-url">URL do webhook</label>
                 <input
                   type="url"
                   id="webhook-url"
                   value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  onChange={(event) => setWebhookUrl(event.target.value)}
                   placeholder="https://api.example.com/webhook"
                   className="form-input"
                 />
@@ -405,7 +421,9 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                 <select
                   id="webhook-method"
                   value={webhookMethod}
-                  onChange={(e) => setWebhookMethod(e.target.value as any)}
+                  onChange={(event) =>
+                    setWebhookMethod(event.target.value as 'POST' | 'GET' | 'PUT')
+                  }
                   className="form-select"
                 >
                   <option value="POST">POST</option>
@@ -424,7 +442,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
                 <textarea
                   id="webhook-payload"
                   value={webhookPayload}
-                  onChange={(e) => setWebhookPayload(e.target.value)}
+                  onChange={(event) => setWebhookPayload(event.target.value)}
                   placeholder={`{\n  "topic": "{{job.topic}}",\n  "service": "{{job.serviceName}}",\n  "data": {{payload}}\n}`}
                   className="code-editor"
                   rows={6}
@@ -435,11 +453,12 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ integration, onSave
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="button button-secondary" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn btn-primary" onClick={handleSave}>
-            💾 Salvar
+          <button className="button button-primary" onClick={handleSave}>
+            <AppIcon icon="lucide:save" className="button-icon" />
+            Salvar
           </button>
         </div>
       </div>

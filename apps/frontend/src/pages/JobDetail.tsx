@@ -1,21 +1,17 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { AppIcon } from '../components/AppIcon';
+import { ErrorMessage } from '../components/ErrorMessage';
+import { Loading } from '../components/Loading';
 import './JobDetail.css';
 
 export function JobDetail() {
   const { topic } = useParams<{ topic: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  
   const [payload, setPayload] = useState('{}');
-  const [isEditingConfig, setIsEditingConfig] = useState(false);
-  const [configForm, setConfigForm] = useState({
-    cron: '',
-    retries: 0,
-    dependsOn: '',
-  });
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', topic],
@@ -31,82 +27,39 @@ export function JobDetail() {
   });
 
   const startJobMutation = useMutation({
-    mutationFn: (data: { topic: string; payload: any }) =>
+    mutationFn: (data: { topic: string; payload: unknown }) =>
       apiService.startJob(data.topic, { payload: data.payload }),
     onSuccess: () => {
-      alert('Job iniciado com sucesso!');
+      setFeedback('Execução enviada para o worker com sucesso.');
       setPayload('{}');
     },
-    onError: (error) => {
-      alert(`Erro ao iniciar job: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    },
-  });
-
-  const updateConfigMutation = useMutation({
-    mutationFn: (data: { topic: string; config: any }) =>
-      apiService.updateJobConfig(data.topic, data.config),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job', topic] });
-      setIsEditingConfig(false);
-      alert('Configuração atualizada com sucesso!');
-    },
-    onError: (error) => {
-      alert(`Erro ao atualizar configuração: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    onError: (mutationError) => {
+      setFeedback(
+        `Falha ao iniciar job: ${
+          mutationError instanceof Error ? mutationError.message : 'Erro desconhecido'
+        }`
+      );
     },
   });
 
   const handleStartJob = () => {
     if (!topic) return;
-    
+
     try {
       const parsedPayload = JSON.parse(payload);
+      setFeedback(null);
       startJobMutation.mutate({ topic, payload: parsedPayload });
-    } catch (error) {
-      alert('Payload JSON inválido');
+    } catch {
+      setFeedback('Payload JSON inválido.');
     }
   };
 
-  const handleUpdateConfig = () => {
-    if (!topic) return;
-
-    const config: any = {};
-    
-    if (configForm.cron.trim()) {
-      config.cron = configForm.cron.trim();
-    }
-    
-    if (configForm.retries > 0) {
-      config.retries = configForm.retries;
-    }
-    
-    if (configForm.dependsOn.trim()) {
-      config.dependsOn = configForm.dependsOn
-        .split(',')
-        .map(d => d.trim())
-        .filter(d => d);
-    }
-
-    updateConfigMutation.mutate({ topic, config });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Carregando detalhes do job...</p>
-      </div>
-    );
-  }
-
+  if (isLoading) return <Loading message="Carregando detalhes operacionais..." />;
   if (error || !job) {
     return (
-      <div className="error-container">
-        <h2>❌ Erro ao carregar job</h2>
-        <p>{error instanceof Error ? error.message : 'Job não encontrado'}</p>
-        <button onClick={() => navigate('/')} className="btn btn-primary">
-          Voltar para lista
-        </button>
-      </div>
+      <ErrorMessage
+        message={error instanceof Error ? error.message : 'Job não encontrado'}
+      />
     );
   }
 
@@ -114,32 +67,52 @@ export function JobDetail() {
     <div className="job-detail-container">
       <div className="detail-header">
         <button onClick={() => navigate('/')} className="back-button">
-          ← Voltar
+          <AppIcon icon="lucide:arrow-left" className="back-icon" />
+          <span>Voltar</span>
         </button>
-        <h2>{job.topic}</h2>
+
+        <div className="detail-header-copy">
+          <div className="eyebrow">
+            <AppIcon icon="lucide:activity" className="eyebrow-icon" />
+            Job control plane
+          </div>
+          <h1>{job.topic}</h1>
+          <p>Inspecione configuração, dispare manualmente e acompanhe execuções recentes.</p>
+        </div>
+
+        <button
+          className="button button-secondary"
+          onClick={() => navigate(`/jobs/${job.topic}/edit`)}
+        >
+          <AppIcon icon="lucide:settings-2" className="button-icon" />
+          Editar
+        </button>
       </div>
 
       <div className="detail-grid">
-        {/* Info Card */}
         <div className="detail-card">
-          <h3>📋 Informações</h3>
+          <div className="card-title">
+            <AppIcon icon="lucide:file-stack" className="card-title-icon" />
+            <h3>Contexto</h3>
+          </div>
+
           <div className="info-group">
             <div className="info-item">
-              <span className="info-label">Topic:</span>
+              <span className="info-label">Topic</span>
               <span className="info-value">{job.topic}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Serviço:</span>
+              <span className="info-label">Service</span>
               <span className="info-value service-badge">{job.service || job.serviceName}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Criado em:</span>
+              <span className="info-label">Criado em</span>
               <span className="info-value">
                 {new Date(job.createdAt).toLocaleString('pt-BR')}
               </span>
             </div>
             <div className="info-item">
-              <span className="info-label">Atualizado em:</span>
+              <span className="info-label">Atualizado em</span>
               <span className="info-value">
                 {new Date(job.updatedAt).toLocaleString('pt-BR')}
               </span>
@@ -147,135 +120,85 @@ export function JobDetail() {
           </div>
         </div>
 
-        {/* Config Card */}
         <div className="detail-card">
-          <div className="card-header">
-            <h3>⚙️ Configuração</h3>
-            <button 
-              onClick={() => {
-                if (isEditingConfig) {
-                  setIsEditingConfig(false);
-                } else {
-                  setConfigForm({
-                    cron: job.config?.cron || '',
-                    retries: job.config?.retries || 0,
-                    dependsOn: job.config?.dependsOn?.join(', ') || '',
-                  });
-                  setIsEditingConfig(true);
-                }
-              }}
-              className="btn-icon"
-            >
-              {isEditingConfig ? '✕' : '✏️'}
-            </button>
+          <div className="card-title">
+            <AppIcon icon="lucide:sliders-horizontal" className="card-title-icon" />
+            <h3>Configuração</h3>
           </div>
 
-          {!isEditingConfig ? (
-            <div className="info-group">
-              <div className="info-item">
-                <span className="info-label">Cron:</span>
-                <span className="info-value code">
-                  {job.config?.cron || 'Não configurado'}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Retries:</span>
-                <span className="info-value">
-                  {job.config?.retries || 0}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Dependências:</span>
-                <span className="info-value">
-                  {job.config?.dependsOn && job.config.dependsOn.length > 0
-                    ? job.config.dependsOn.join(', ')
-                    : 'Nenhuma'}
-                </span>
-              </div>
+          <div className="config-list">
+            <div className="config-row">
+              <span>Cron</span>
+              <code>{job.config?.cron || 'manual'}</code>
             </div>
-          ) : (
-            <div className="config-form">
-              <div className="form-group">
-                <label>Cron Expression:</label>
-                <input
-                  type="text"
-                  value={configForm.cron}
-                  onChange={(e) => setConfigForm({ ...configForm, cron: e.target.value })}
-                  placeholder="0 * * * *"
-                  className="form-input"
-                />
-                <small>Exemplo: 0 * * * * (todo início de hora)</small>
-              </div>
-              <div className="form-group">
-                <label>Retries:</label>
-                <input
-                  type="number"
-                  value={configForm.retries}
-                  onChange={(e) => setConfigForm({ ...configForm, retries: parseInt(e.target.value) || 0 })}
-                  min="0"
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Dependências (separadas por vírgula):</label>
-                <input
-                  type="text"
-                  value={configForm.dependsOn}
-                  onChange={(e) => setConfigForm({ ...configForm, dependsOn: e.target.value })}
-                  placeholder="job-1, job-2"
-                  className="form-input"
-                />
-              </div>
-              <button
-                onClick={handleUpdateConfig}
-                disabled={updateConfigMutation.isPending}
-                className="btn btn-primary"
-              >
-                {updateConfigMutation.isPending ? 'Salvando...' : 'Salvar Configuração'}
-              </button>
+            <div className="config-row">
+              <span>Retries</span>
+              <strong>{job.config?.retries || 0}</strong>
             </div>
-          )}
+            <div className="config-row">
+              <span>Timeout</span>
+              <strong>{job.config?.timeout || 0} ms</strong>
+            </div>
+            <div className="config-row">
+              <span>Dependências</span>
+              <strong>
+                {job.config?.dependsOn?.length ? job.config.dependsOn.join(', ') : 'Nenhuma'}
+              </strong>
+            </div>
+          </div>
         </div>
 
-        {/* Trigger Card */}
         <div className="detail-card full-width">
-          <h3>🚀 Disparar Job Manualmente</h3>
+          <div className="card-title">
+            <AppIcon icon="lucide:play" className="card-title-icon" />
+            <h3>Manual trigger</h3>
+          </div>
+
           <div className="trigger-form">
             <div className="form-group">
-              <label>Payload (JSON):</label>
+              <label>Payload (JSON)</label>
               <textarea
                 value={payload}
-                onChange={(e) => setPayload(e.target.value)}
+                onChange={(event) => setPayload(event.target.value)}
                 placeholder='{"key": "value"}'
                 className="form-textarea"
                 rows={6}
               />
             </div>
+            {feedback && <div className="feedback-banner">{feedback}</div>}
             <button
               onClick={handleStartJob}
               disabled={startJobMutation.isPending}
-              className="btn btn-success"
+              className="button button-primary"
             >
-              {startJobMutation.isPending ? 'Iniciando...' : '▶️ Iniciar Job'}
+              <AppIcon icon="lucide:rocket" className="button-icon" />
+              {startJobMutation.isPending ? 'Enviando...' : 'Iniciar job'}
             </button>
           </div>
         </div>
 
         <div className="detail-card full-width">
-          <h3>📈 Execuções Recentes</h3>
+          <div className="card-title">
+            <AppIcon icon="lucide:list-collapse" className="card-title-icon" />
+            <h3>Execuções recentes</h3>
+          </div>
+
           {executions.length === 0 ? (
-            <p>Nenhuma execução registrada ainda.</p>
+            <p className="empty-copy">Nenhuma execução registrada ainda.</p>
           ) : (
-            <div className="info-group">
+            <div className="executions-table">
               {executions.map((execution) => (
-                <div className="info-item" key={execution.executionId}>
-                  <span className="info-label">
-                    {new Date(execution.createdAt).toLocaleString('pt-BR')}
-                  </span>
-                  <span className="info-value">
-                    {execution.status}
-                    {execution.errorMessage ? ` - ${execution.errorMessage}` : ''}
-                  </span>
+                <div className="execution-row" key={execution.executionId}>
+                  <div className="execution-main">
+                    <code>{execution.executionId}</code>
+                    <span className={`execution-status ${execution.status}`}>
+                      {execution.status}
+                    </span>
+                  </div>
+                  <div className="execution-meta">
+                    <span>{new Date(execution.createdAt).toLocaleString('pt-BR')}</span>
+                    <span>{execution.errorMessage || 'Sem erro reportado'}</span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,3 +1,4 @@
+import { AppIcon } from './AppIcon';
 import './ErrorMessage.css';
 
 interface ErrorMessageProps {
@@ -7,16 +8,19 @@ interface ErrorMessageProps {
 }
 
 export function ErrorMessage({ 
-  title = '❌ Erro', 
+  title = 'Erro', 
   message, 
   onRetry 
 }: ErrorMessageProps) {
   return (
     <div className="error-container">
+      <div className="error-icon-wrap">
+        <AppIcon icon="lucide:triangle-alert" className="error-icon" />
+      </div>
       <h2>{title}</h2>
       <p>{message}</p>
       {onRetry && (
-        <button onClick={onRetry} className="btn btn-primary">
+        <button onClick={onRetry} className="button button-primary">
           Tentar novamente
         </button>
       )}

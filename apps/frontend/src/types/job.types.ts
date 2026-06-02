@@ -34,7 +34,7 @@ export interface JobConfig {
 }
 
 export interface JobStartPayload {
-  payload?: any;
+  payload?: unknown;
 }
 
 export interface JobStartResponse {

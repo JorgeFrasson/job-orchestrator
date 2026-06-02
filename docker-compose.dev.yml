@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   job-orchestrator-core:
     build:
@@ -6,53 +5,49 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_MAIN_TOPIC: job-orchestrer-main
-      KAFKA_TOPIC_MANAGEMENT_MODE: create_if_missing
-      KAFKA_TOPIC_PARTITIONS: 1
-      KAFKA_TOPIC_REPLICATION_FACTOR: 1
-      DB_HOST: host.docker.internal
-      DB_PORT: 5434
-      DB_USER: zapdev
-      DB_PASS: Zapdev@1
-      DB_NAME: joborchestrer
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASS: ""
-      REDIS_DB: 0
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    # depends_on:
-    #   - postgres
-    #   - redis
     networks:
-      - pos_zap_pos_kafka_net
+      - job-orchestrator-net
     volumes:
-      - ./:/app    # monta seu código dentro do container na pasta /app (ajuste se necessário)
-      - /app/node_modules  # para evitar sobrescrever node_modules local, opcional
-    command: pnpm --filter core start:dev   # executa no modo watch
-    stdin_open: true    # permite entrada se necessário
-    tty: true           # mantém container interativo
+      - ./:/app
+      - core-data:/app/apps/core/data
+    command: pnpm --filter core start:dev
+    stdin_open: true
+    tty: true
 
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: job_orchestrer
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - pos_zap_pos_kafka_net
+  example-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - job-orchestrator-core
+    environment:
+      CORE_URL: ws://job-orchestrator-core:3000
+    networks:
+      - job-orchestrator-net
+    volumes:
+      - ./:/app
+    command: pnpm --filter example-service dev
+    stdin_open: true
+    tty: true
 
-  # redis:
-  #   image: redis:7
-  #   ports:
-  #     - "6379:6379"
-  #   networks:
-  #     - pos_zap_pos_kafka_net
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - job-orchestrator-core
+    ports:
+      - "5173:5173"
+    networks:
+      - job-orchestrator-net
+    volumes:
+      - ./:/app
+    command: pnpm --filter frontend dev --host 0.0.0.0
+    stdin_open: true
+    tty: true
 
 networks:
-  pos_zap_pos_kafka_net:
-    external: true
+  job-orchestrator-net:
+
+volumes:
+  core-data:

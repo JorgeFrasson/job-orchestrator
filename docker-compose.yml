@@ -1,50 +1,31 @@
-version: "3.8"
 services:
   job-orchestrator-core:
     build:
       context: .
       dockerfile: Dockerfile
+    image: job-orchestrator-local:latest
     ports:
       - "3000:3000"
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_MAIN_TOPIC: job-orchestrer-main
-      KAFKA_TOPIC_MANAGEMENT_MODE: validate
-      KAFKA_TOPIC_PARTITIONS: 1
-      KAFKA_TOPIC_REPLICATION_FACTOR: 1
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: joborchestrer
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASS: ""
-      REDIS_DB: 0
-    # depends_on:
-    #   - postgres
-    #   - redis
+    volumes:
+      - core-data:/app/apps/core/data
     networks:
-      - pos_zap_pos_kafka_net
+      - job-orchestrator-net
 
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: job_orchestrer
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - pos_zap_pos_kafka_net
-
-  # redis:
-  #   image: redis:7
-  #   ports:
-  #     - "6379:6379"
-  #   networks:
-  #     - pos_zap_pos_kafka_net
+  example-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: job-orchestrator-local:latest
+    depends_on:
+      - job-orchestrator-core
+    environment:
+      CORE_URL: ws://job-orchestrator-core:3000
+    command: ["node", "packages/example-service/dist/index.js"]
+    networks:
+      - job-orchestrator-net
 
 networks:
-  pos_zap_pos_kafka_net:
-    external: true
+  job-orchestrator-net:
+
+volumes:
+  core-data:

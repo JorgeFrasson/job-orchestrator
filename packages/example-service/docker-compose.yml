@@ -3,18 +3,8 @@ version: "3.8"
 services:
   example-service:
     build:
-      context: ../../  # <- raiz do monorepo
-      dockerfile: packages/example-service/Dockerfile
-    container_name: example-service-dev
-    volumes:
-      - ../../:/app       # <- monta o monorepo inteiro no /app
-    working_dir: /app/packages/example-service
-    command: pnpm dev     # <- script "dev": ts-node-dev ...
+      context: ../..
+      dockerfile: Dockerfile.dev
     environment:
-      KAFKA_BROKER: kafka:9092
-    networks:
-      - pos_zap_pos_kafka_net
-
-networks:
-  pos_zap_pos_kafka_net:
-    external: true
+      CORE_URL: ws://job-orchestrator-core:3000
+    command: pnpm --filter example-service dev
